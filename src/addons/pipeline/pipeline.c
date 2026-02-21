@@ -765,8 +765,6 @@ bool ecs_progress(
     ecs_frame_end(world);
 
     return !ECS_BIT_IS_SET(world->flags, EcsWorldQuit);
-error:
-    return false;
 }
 
 void ecs_set_time_scale(
