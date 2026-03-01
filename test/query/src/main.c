@@ -2160,6 +2160,11 @@ void Toggle_this_sort(void);
 void Toggle_this_table_move_2_from_3(void);
 void Toggle_toggle_0_src_only_term(void);
 void Toggle_toggle_0_src(void);
+void Toggle_or_toggle_first_branch_matches(void);
+void Toggle_or_toggle_second_branch_matches(void);
+void Toggle_or_toggle_third_branch_matches(void);
+void Toggle_or_toggle_all_branches_match_once(void);
+void Toggle_or_toggle_no_branches_match(void);
 
 // Testsuite 'Sparse'
 void Sparse_setup(void);
@@ -11252,6 +11257,26 @@ bake_test_case Toggle_testcases[] = {
     {
         "toggle_0_src",
         Toggle_toggle_0_src
+    },
+    {
+        "or_toggle_first_branch_matches",
+        Toggle_or_toggle_first_branch_matches
+    },
+    {
+        "or_toggle_second_branch_matches",
+        Toggle_or_toggle_second_branch_matches
+    },
+    {
+        "or_toggle_third_branch_matches",
+        Toggle_or_toggle_third_branch_matches
+    },
+    {
+        "or_toggle_all_branches_match_once",
+        Toggle_or_toggle_all_branches_match_once
+    },
+    {
+        "or_toggle_no_branches_match",
+        Toggle_or_toggle_no_branches_match
     }
 };
 
@@ -13931,7 +13956,7 @@ static bake_test_suite suites[] = {
         "Toggle",
         Toggle_setup,
         NULL,
-        163,
+        168,
         Toggle_testcases,
         1,
         Toggle_params

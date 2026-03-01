@@ -6205,7 +6205,7 @@ ecs_entity_t Toggle_or_toggle_setup(
     ecs_entity_t e = ecs_entity(world, { .name = "e" });
     ecs_set(world, e, Position, {10, 20});
     ecs_set(world, e, Velocity, {1, 2});
-    ecs_set(world, e, Mass, 3);
+    ecs_set(world, e, Mass, {3});
     ecs_add(world, e, HasChangedPosition);
     ecs_add(world, e, HasChangedRotation);
     ecs_add(world, e, HasChangedScale);
@@ -6221,6 +6221,8 @@ void Toggle_or_toggle_first_branch_matches(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
     ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_entity_t HasChangedPosition = ecs_lookup(world, "HasChangedPosition");
 
     ecs_progress(world, 0);
     test_int(0, match_count);
@@ -6238,6 +6240,8 @@ void Toggle_or_toggle_second_branch_matches(void) {
     int32_t match_count = 0;
     ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
 
+    ecs_entity_t HasChangedRotation = ecs_lookup(world, "HasChangedRotation");
+
     ecs_progress(world, 0);
     test_int(0, match_count);
 
@@ -6254,6 +6258,8 @@ void Toggle_or_toggle_third_branch_matches(void) {
     int32_t match_count = 0;
     ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
 
+    ecs_entity_t HasChangedScale = ecs_lookup(world, "HasChangedScale");
+
     ecs_progress(world, 0);
     test_int(0, match_count);
 
@@ -6269,6 +6275,10 @@ void Toggle_or_toggle_all_branches_match_once(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
     ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_entity_t HasChangedPosition = ecs_lookup(world, "HasChangedPosition");
+    ecs_entity_t HasChangedRotation = ecs_lookup(world, "HasChangedRotation");
+    ecs_entity_t HasChangedScale = ecs_lookup(world, "HasChangedScale");
 
     ecs_enable_id(world, e, HasChangedPosition, true);
     ecs_enable_id(world, e, HasChangedRotation, true);
