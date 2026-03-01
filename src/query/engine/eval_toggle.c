@@ -110,7 +110,8 @@ flecs_query_row_mask_t flecs_query_get_row_mask(
         if (!field_has_bitset) {
             if (not_fields & field_bit) {
                 if (op_ctx->prev_set_fields & field_bit) {
-                    has_bitset = false;
+                    mask = 0;
+                    has_bitset = true;
                     break;
                 }
             }
@@ -256,11 +257,7 @@ compute_block:
 
         /* If table doesn't have bitset columns, all columns match */
         if (!(op_ctx->has_bitset = row_mask.has_bitset)) {
-            if (!not_fields) {
-                return true;
-            } else {
-                goto done;
-            }
+            return true;
         }
 
         /* No enabled bits */
@@ -388,4 +385,3 @@ repeat: {}
 
     return result;
 }
-
