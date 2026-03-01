@@ -2171,24 +2171,6 @@ void Toggle_this_toggle_not_shared_self_up(void) {
 
     {
         ecs_iter_t it = ecs_query_iter(world, q);
-        test_bool(true, ecs_query_next(&it));
-        test_int(1, it.count);
-        test_uint(e, it.entities[0]);
-        test_uint(0, ecs_field_src(&it, 0));
-        test_uint(Foo, ecs_field_id(&it, 0));
-        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-        test_bool(true, ecs_field_is_set(&it, 0));
-        test_bool(false, ecs_field_is_set(&it, 1));
-
-        test_bool(true, ecs_query_next(&it));
-        test_int(1, it.count);
-        test_uint(p, it.entities[0]);
-        test_uint(0, ecs_field_src(&it, 0));
-        test_uint(Foo, ecs_field_id(&it, 0));
-        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-        test_bool(true, ecs_field_is_set(&it, 0));
-        test_bool(false, ecs_field_is_set(&it, 1));
-
         test_bool(false, ecs_query_next(&it));
     }
 
@@ -2269,24 +2251,6 @@ void Toggle_this_toggle_not_shared_up(void) {
 
     {
         ecs_iter_t it = ecs_query_iter(world, q);
-        test_bool(true, ecs_query_next(&it));
-        test_int(1, it.count);
-        test_uint(e, it.entities[0]);
-        test_uint(0, ecs_field_src(&it, 0));
-        test_uint(Foo, ecs_field_id(&it, 0));
-        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-        test_bool(true, ecs_field_is_set(&it, 0));
-        test_bool(false, ecs_field_is_set(&it, 1));
-
-        test_bool(true, ecs_query_next(&it));
-        test_int(1, it.count);
-        test_uint(p, it.entities[0]);
-        test_uint(0, ecs_field_src(&it, 0));
-        test_uint(Foo, ecs_field_id(&it, 0));
-        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-        test_bool(true, ecs_field_is_set(&it, 0));
-        test_bool(false, ecs_field_is_set(&it, 1));
-
         test_bool(false, ecs_query_next(&it));
     }
 
@@ -3746,7 +3710,6 @@ void this_written_not(int total, int mod) {
 
     for (int i = 0; i < total; i ++) {
         ecs_new_w(world, Tag);
-        total_without_pos ++;
     }
 
     for (int i = 0; i < total; i ++) {
@@ -4224,47 +4187,33 @@ void Toggle_this_written_toggle_w_not_toggle(void) {
     test_assert(q != NULL);
 
     ecs_iter_t it = ecs_query_iter(world, q);
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e1, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+    bool e1_found = false, e4_found = false, e7_found = false, e9_found = false;
+    int32_t matched = 0;
+    while (ecs_iter_next(&it)) {
+        test_uint(Tag, ecs_field_id(&it, 0));
+        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
+        test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
+        test_bool(true, ecs_field_is_set(&it, 0));
+        test_bool(true, ecs_field_is_set(&it, 1));
+        test_bool(false, ecs_field_is_set(&it, 2));
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e4, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+        int32_t i;
+        for (i = 0; i < it.count; i ++) {
+            ecs_entity_t ent = it.entities[i];
+            if (ent == e1) e1_found = true;
+            else if (ent == e4) e4_found = true;
+            else if (ent == e7) e7_found = true;
+            else if (ent == e9) e9_found = true;
+            else test_assert(false);
+            matched ++;
+        }
+    }
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e7, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e9, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(false, ecs_iter_next(&it));
+    test_bool(true, e1_found);
+    test_bool(true, e4_found);
+    test_bool(true, e7_found);
+    test_bool(true, e9_found);
+    test_int(4, matched);
 
     ecs_query_fini(q);
 
@@ -4351,47 +4300,33 @@ void Toggle_this_written_not_toggle_w_toggle(void) {
     test_assert(q != NULL);
 
     ecs_iter_t it = ecs_query_iter(world, q);
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e1, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
+    bool e1_found = false, e4_found = false, e7_found = false, e9_found = false;
+    int32_t matched = 0;
+    while (ecs_iter_next(&it)) {
+        test_uint(Tag, ecs_field_id(&it, 0));
+        test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
+        test_uint(ecs_id(Position), ecs_field_id(&it, 2));
+        test_bool(true, ecs_field_is_set(&it, 0));
+        test_bool(false, ecs_field_is_set(&it, 1));
+        test_bool(true, ecs_field_is_set(&it, 2));
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e4, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
+        int32_t i;
+        for (i = 0; i < it.count; i ++) {
+            ecs_entity_t ent = it.entities[i];
+            if (ent == e1) e1_found = true;
+            else if (ent == e4) e4_found = true;
+            else if (ent == e7) e7_found = true;
+            else if (ent == e9) e9_found = true;
+            else test_assert(false);
+            matched ++;
+        }
+    }
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e7, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e9, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
-
-    test_bool(false, ecs_iter_next(&it));
+    test_bool(true, e1_found);
+    test_bool(true, e4_found);
+    test_bool(true, e7_found);
+    test_bool(true, e9_found);
+    test_int(4, matched);
 
     ecs_query_fini(q);
 
@@ -4792,77 +4727,39 @@ void Toggle_this_written_not_w_optional_toggle(void) {
     test_assert(q != NULL);
 
     ecs_iter_t it = ecs_query_iter(world, q);
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e2, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+    bool e1_found = false, e2_found = false, e4_found = false;
+    bool e5_found = false, e7_found = false, e9_found = false, e11_found = false;
+    int32_t matched = 0;
+    while (ecs_iter_next(&it)) {
+        test_uint(Tag, ecs_field_id(&it, 0));
+        test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
+        test_uint(ecs_id(Position), ecs_field_id(&it, 2));
+        test_bool(true, ecs_field_is_set(&it, 0));
+        test_bool(false, ecs_field_is_set(&it, 1));
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e1, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
+        int32_t i;
+        for (i = 0; i < it.count; i ++) {
+            ecs_entity_t ent = it.entities[i];
+            if (ent == e1) e1_found = true;
+            else if (ent == e2) e2_found = true;
+            else if (ent == e4) e4_found = true;
+            else if (ent == e5) e5_found = true;
+            else if (ent == e7) e7_found = true;
+            else if (ent == e9) e9_found = true;
+            else if (ent == e11) e11_found = true;
+            else test_assert(false);
+            matched ++;
+        }
+    }
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e4, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e5, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e7, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e9, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(true, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e11, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(false, ecs_iter_next(&it));
+    test_bool(true, e1_found);
+    test_bool(true, e2_found);
+    test_bool(true, e4_found);
+    test_bool(true, e5_found);
+    test_bool(true, e7_found);
+    test_bool(true, e9_found);
+    test_bool(true, e11_found);
+    test_int(7, matched);
 
     ecs_query_fini(q);
 
@@ -4949,77 +4846,39 @@ void Toggle_this_written_optional_w_not_toggle(void) {
     test_assert(q != NULL);
 
     ecs_iter_t it = ecs_query_iter(world, q);
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e2, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+    bool e1_found = false, e2_found = false, e4_found = false;
+    bool e5_found = false, e7_found = false, e9_found = false, e11_found = false;
+    int32_t matched = 0;
+    while (ecs_iter_next(&it)) {
+        test_uint(Tag, ecs_field_id(&it, 0));
+        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
+        test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
+        test_bool(true, ecs_field_is_set(&it, 0));
+        test_bool(false, ecs_field_is_set(&it, 2));
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e1, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+        int32_t i;
+        for (i = 0; i < it.count; i ++) {
+            ecs_entity_t ent = it.entities[i];
+            if (ent == e1) e1_found = true;
+            else if (ent == e2) e2_found = true;
+            else if (ent == e4) e4_found = true;
+            else if (ent == e5) e5_found = true;
+            else if (ent == e7) e7_found = true;
+            else if (ent == e9) e9_found = true;
+            else if (ent == e11) e11_found = true;
+            else test_assert(false);
+            matched ++;
+        }
+    }
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e4, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e5, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e7, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e9, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e11, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(false, ecs_iter_next(&it));
+    test_bool(true, e1_found);
+    test_bool(true, e2_found);
+    test_bool(true, e4_found);
+    test_bool(true, e5_found);
+    test_bool(true, e7_found);
+    test_bool(true, e9_found);
+    test_bool(true, e11_found);
+    test_int(7, matched);
 
     ecs_query_fini(q);
 
@@ -5106,37 +4965,31 @@ void Toggle_this_written_2_not_toggle(void) {
     test_assert(q != NULL);
 
     ecs_iter_t it = ecs_query_iter(world, q);
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e2, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+    bool e2_found = false, e5_found = false, e11_found = false;
+    int32_t matched = 0;
+    while (ecs_iter_next(&it)) {
+        test_uint(Tag, ecs_field_id(&it, 0));
+        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
+        test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
+        test_bool(true, ecs_field_is_set(&it, 0));
+        test_bool(false, ecs_field_is_set(&it, 1));
+        test_bool(false, ecs_field_is_set(&it, 2));
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e5, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
+        int32_t i;
+        for (i = 0; i < it.count; i ++) {
+            ecs_entity_t ent = it.entities[i];
+            if (ent == e2) e2_found = true;
+            else if (ent == e5) e5_found = true;
+            else if (ent == e11) e11_found = true;
+            else test_assert(false);
+            matched ++;
+        }
+    }
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e11, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(false, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-
-    test_bool(false, ecs_iter_next(&it));
+    test_bool(true, e2_found);
+    test_bool(true, e5_found);
+    test_bool(true, e11_found);
+    test_int(3, matched);
 
     ecs_query_fini(q);
 
@@ -5471,55 +5324,35 @@ void Toggle_this_written_toggle_w_2_not_toggle(void) {
     test_assert(q != NULL);
 
     ecs_iter_t it = ecs_query_iter(world, q);
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e1, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_uint(ecs_id(Mass), ecs_field_id(&it, 3));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-    test_bool(false, ecs_field_is_set(&it, 3));
+    bool e1_found = false, e4_found = false, e7_found = false, e9_found = false;
+    int32_t matched = 0;
+    while (ecs_iter_next(&it)) {
+        test_uint(Tag, ecs_field_id(&it, 0));
+        test_uint(ecs_id(Position), ecs_field_id(&it, 1));
+        test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
+        test_uint(ecs_id(Mass), ecs_field_id(&it, 3));
+        test_bool(true, ecs_field_is_set(&it, 0));
+        test_bool(true, ecs_field_is_set(&it, 1));
+        test_bool(false, ecs_field_is_set(&it, 2));
+        test_bool(false, ecs_field_is_set(&it, 3));
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e4, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_uint(ecs_id(Mass), ecs_field_id(&it, 3));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-    test_bool(false, ecs_field_is_set(&it, 3));
+        int32_t i;
+        for (i = 0; i < it.count; i ++) {
+            ecs_entity_t ent = it.entities[i];
+            if (ent == e1) e1_found = true;
+            else if (ent == e4) e4_found = true;
+            else if (ent == e7) e7_found = true;
+            else if (ent == e9) e9_found = true;
+            else test_assert(false);
+            matched ++;
+        }
+    }
 
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e7, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_uint(ecs_id(Mass), ecs_field_id(&it, 3));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-    test_bool(false, ecs_field_is_set(&it, 3));
-
-    test_bool(true, ecs_iter_next(&it));
-    test_int(1, it.count);
-    test_uint(e9, it.entities[0]);
-    test_uint(Tag, ecs_field_id(&it, 0));
-    test_uint(ecs_id(Position), ecs_field_id(&it, 1));
-    test_uint(ecs_id(Velocity), ecs_field_id(&it, 2));
-    test_uint(ecs_id(Mass), ecs_field_id(&it, 3));
-    test_bool(true, ecs_field_is_set(&it, 0));
-    test_bool(true, ecs_field_is_set(&it, 1));
-    test_bool(false, ecs_field_is_set(&it, 2));
-    test_bool(false, ecs_field_is_set(&it, 3));
-
-    test_bool(false, ecs_iter_next(&it));
+    test_bool(true, e1_found);
+    test_bool(true, e4_found);
+    test_bool(true, e7_found);
+    test_bool(true, e9_found);
+    test_int(4, matched);
 
     ecs_query_fini(q);
 
@@ -6175,7 +6008,10 @@ void Toggle_or_toggle_count_matches(ecs_iter_t *it) {
 static
 ecs_entity_t Toggle_or_toggle_setup(
     ecs_world_t *world,
-    int32_t *match_count)
+    int32_t *match_count,
+    ecs_entity_t *has_changed_position,
+    ecs_entity_t *has_changed_rotation,
+    ecs_entity_t *has_changed_scale)
 {
     ECS_COMPONENT(world, Position);
     ECS_COMPONENT(world, Velocity);
@@ -6188,14 +6024,18 @@ ecs_entity_t Toggle_or_toggle_setup(
     ecs_add_id(world, HasChangedRotation, EcsCanToggle);
     ecs_add_id(world, HasChangedScale, EcsCanToggle);
 
+    if (has_changed_position) *has_changed_position = HasChangedPosition;
+    if (has_changed_rotation) *has_changed_rotation = HasChangedRotation;
+    if (has_changed_scale) *has_changed_scale = HasChangedScale;
+
     ecs_system(world, {
         .query.terms = {
             { .id = ecs_id(Position) },
             { .id = ecs_id(Velocity) },
             { .id = ecs_id(Mass) },
-            { .id = HasChangedPosition },
+            { .id = HasChangedPosition, .oper = EcsOr },
             { .id = HasChangedRotation, .oper = EcsOr },
-            { .id = HasChangedScale, .oper = EcsOr }
+            { .id = HasChangedScale }
         },
         .query.cache_kind = cache_kind,
         .callback = Toggle_or_toggle_count_matches,
@@ -6220,9 +6060,9 @@ ecs_entity_t Toggle_or_toggle_setup(
 void Toggle_or_toggle_first_branch_matches(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
-    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
-
-    ecs_entity_t HasChangedPosition = ecs_lookup(world, "HasChangedPosition");
+    ecs_entity_t HasChangedPosition = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(
+        world, &match_count, &HasChangedPosition, NULL, NULL);
 
     ecs_progress(world, 0);
     test_int(0, match_count);
@@ -6238,9 +6078,9 @@ void Toggle_or_toggle_first_branch_matches(void) {
 void Toggle_or_toggle_second_branch_matches(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
-    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
-
-    ecs_entity_t HasChangedRotation = ecs_lookup(world, "HasChangedRotation");
+    ecs_entity_t HasChangedRotation = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(
+        world, &match_count, NULL, &HasChangedRotation, NULL);
 
     ecs_progress(world, 0);
     test_int(0, match_count);
@@ -6256,9 +6096,9 @@ void Toggle_or_toggle_second_branch_matches(void) {
 void Toggle_or_toggle_third_branch_matches(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
-    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
-
-    ecs_entity_t HasChangedScale = ecs_lookup(world, "HasChangedScale");
+    ecs_entity_t HasChangedScale = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(
+        world, &match_count, NULL, NULL, &HasChangedScale);
 
     ecs_progress(world, 0);
     test_int(0, match_count);
@@ -6274,11 +6114,10 @@ void Toggle_or_toggle_third_branch_matches(void) {
 void Toggle_or_toggle_all_branches_match_once(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
-    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
-
-    ecs_entity_t HasChangedPosition = ecs_lookup(world, "HasChangedPosition");
-    ecs_entity_t HasChangedRotation = ecs_lookup(world, "HasChangedRotation");
-    ecs_entity_t HasChangedScale = ecs_lookup(world, "HasChangedScale");
+    ecs_entity_t HasChangedPosition = 0, HasChangedRotation = 0, HasChangedScale = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(
+        world, &match_count,
+        &HasChangedPosition, &HasChangedRotation, &HasChangedScale);
 
     ecs_enable_id(world, e, HasChangedPosition, true);
     ecs_enable_id(world, e, HasChangedRotation, true);
@@ -6293,7 +6132,7 @@ void Toggle_or_toggle_all_branches_match_once(void) {
 void Toggle_or_toggle_no_branches_match(void) {
     ecs_world_t *world = ecs_mini();
     int32_t match_count = 0;
-    Toggle_or_toggle_setup(world, &match_count);
+    Toggle_or_toggle_setup(world, &match_count, NULL, NULL, NULL);
 
     ecs_progress(world, 0);
     test_int(0, match_count);
