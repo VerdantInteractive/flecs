@@ -993,8 +993,8 @@ int flecs_query_compile(
     do {
         /* Compile remaining query terms to instructions */
         for (i = start_term; i < term_count; i ++) {
-            ecs_term_t *term = &terms[i];
             int32_t compile = i;
+            ecs_term_t *term = &terms[i];
 
             if (compiled & (1ull << i)) {
                 continue; /* Already compiled */

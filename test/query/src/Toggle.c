@@ -6165,3 +6165,128 @@ void Toggle_toggle_0_src(void) {
 
     ecs_fini(world);
 }
+
+static
+void Toggle_or_toggle_count_matches(ecs_iter_t *it) {
+    int32_t *match_count = it->ctx;
+    *match_count += it->count;
+}
+
+static
+ecs_entity_t Toggle_or_toggle_setup(
+    ecs_world_t *world,
+    int32_t *match_count)
+{
+    ECS_COMPONENT(world, Position);
+    ECS_COMPONENT(world, Velocity);
+    ECS_COMPONENT(world, Mass);
+    ECS_TAG(world, HasChangedPosition);
+    ECS_TAG(world, HasChangedRotation);
+    ECS_TAG(world, HasChangedScale);
+
+    ecs_add_id(world, HasChangedPosition, EcsCanToggle);
+    ecs_add_id(world, HasChangedRotation, EcsCanToggle);
+    ecs_add_id(world, HasChangedScale, EcsCanToggle);
+
+    ecs_system(world, {
+        .query.terms = {
+            { .id = ecs_id(Position) },
+            { .id = ecs_id(Velocity) },
+            { .id = ecs_id(Mass) },
+            { .id = HasChangedPosition },
+            { .id = HasChangedRotation, .oper = EcsOr },
+            { .id = HasChangedScale, .oper = EcsOr }
+        },
+        .query.cache_kind = cache_kind,
+        .callback = Toggle_or_toggle_count_matches,
+        .ctx = match_count
+    });
+
+    ecs_entity_t e = ecs_entity(world, { .name = "e" });
+    ecs_set(world, e, Position, {10, 20});
+    ecs_set(world, e, Velocity, {1, 2});
+    ecs_set(world, e, Mass, 3);
+    ecs_add(world, e, HasChangedPosition);
+    ecs_add(world, e, HasChangedRotation);
+    ecs_add(world, e, HasChangedScale);
+
+    ecs_enable_id(world, e, HasChangedPosition, false);
+    ecs_enable_id(world, e, HasChangedRotation, false);
+    ecs_enable_id(world, e, HasChangedScale, false);
+
+    return e;
+}
+
+void Toggle_or_toggle_first_branch_matches(void) {
+    ecs_world_t *world = ecs_mini();
+    int32_t match_count = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_progress(world, 0);
+    test_int(0, match_count);
+
+    match_count = 0;
+    ecs_enable_id(world, e, HasChangedPosition, true);
+    ecs_progress(world, 0);
+    test_int(1, match_count);
+
+    ecs_fini(world);
+}
+
+void Toggle_or_toggle_second_branch_matches(void) {
+    ecs_world_t *world = ecs_mini();
+    int32_t match_count = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_progress(world, 0);
+    test_int(0, match_count);
+
+    match_count = 0;
+    ecs_enable_id(world, e, HasChangedRotation, true);
+    ecs_progress(world, 0);
+    test_int(1, match_count);
+
+    ecs_fini(world);
+}
+
+void Toggle_or_toggle_third_branch_matches(void) {
+    ecs_world_t *world = ecs_mini();
+    int32_t match_count = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_progress(world, 0);
+    test_int(0, match_count);
+
+    match_count = 0;
+    ecs_enable_id(world, e, HasChangedScale, true);
+    ecs_progress(world, 0);
+    test_int(1, match_count);
+
+    ecs_fini(world);
+}
+
+void Toggle_or_toggle_all_branches_match_once(void) {
+    ecs_world_t *world = ecs_mini();
+    int32_t match_count = 0;
+    ecs_entity_t e = Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_enable_id(world, e, HasChangedPosition, true);
+    ecs_enable_id(world, e, HasChangedRotation, true);
+    ecs_enable_id(world, e, HasChangedScale, true);
+
+    ecs_progress(world, 0);
+    test_int(1, match_count);
+
+    ecs_fini(world);
+}
+
+void Toggle_or_toggle_no_branches_match(void) {
+    ecs_world_t *world = ecs_mini();
+    int32_t match_count = 0;
+    Toggle_or_toggle_setup(world, &match_count);
+
+    ecs_progress(world, 0);
+    test_int(0, match_count);
+
+    ecs_fini(world);
+}

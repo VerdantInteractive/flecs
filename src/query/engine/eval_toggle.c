@@ -29,7 +29,20 @@ static inline int32_t flecs_ctz64(uint64_t v) {
 }
 
 static
+bool flecs_query_term_is_in_or_chain(
+    const ecs_query_t *query,
+    int32_t term_index)
+{
+    ecs_term_t *terms = query->terms;
+    int32_t term_count = query->term_count;
+    return (terms[term_index].oper == EcsOr) ||
+        (term_index > 0 && terms[term_index - 1].oper == EcsOr) ||
+        ((term_index + 1) < term_count && terms[term_index + 1].oper == EcsOr);
+}
+
+static
 flecs_query_row_mask_t flecs_query_get_row_mask(
+    const ecs_query_run_ctx_t *ctx,
     ecs_iter_t *it,
     ecs_table_t *table,
     int32_t block_index,
@@ -41,6 +54,7 @@ flecs_query_row_mask_t flecs_query_get_row_mask(
     int32_t i, field_count = it->field_count;
     ecs_flags64_t fields = and_fields | not_fields;
     bool has_bitset = false;
+    const ecs_query_t *query = &ctx->query->pub;
 
     for (i = 0; i < field_count; i ++) {
         uint64_t field_bit = 1llu << i;
@@ -57,8 +71,43 @@ flecs_query_row_mask_t flecs_query_get_row_mask(
         }
 
         ecs_id_t id = it->ids[i];
+        ecs_flags64_t block = 0;
+        bool field_has_bitset = false;
+
         ecs_bitset_t *bs = flecs_table_get_toggle(table, id);
-        if (!bs) {
+        if (bs) {
+            ecs_assert((64 * block_index) < bs->size, ECS_INTERNAL_ERROR, NULL);
+            block = bs->data[block_index];
+            field_has_bitset = true;
+        }
+
+        int32_t t;
+        for (t = 0; t < query->term_count; t ++) {
+            ecs_term_t *term = &query->terms[t];
+            if (!(term->flags_ & EcsTermIsToggle)) {
+                continue;
+            }
+            if (term->field_index != i) {
+                continue;
+            }
+            if (!flecs_query_term_is_in_or_chain(query, t)) {
+                continue;
+            }
+            if (term->id == id) {
+                continue;
+            }
+
+            ecs_bitset_t *or_bs = flecs_table_get_toggle(table, term->id);
+            if (!or_bs) {
+                continue;
+            }
+
+            ecs_assert((64 * block_index) < or_bs->size, ECS_INTERNAL_ERROR, NULL);
+            block |= or_bs->data[block_index];
+            field_has_bitset = true;
+        }
+
+        if (!field_has_bitset) {
             if (not_fields & field_bit) {
                 if (op_ctx->prev_set_fields & field_bit) {
                     has_bitset = false;
@@ -68,12 +117,10 @@ flecs_query_row_mask_t flecs_query_get_row_mask(
             continue;
         }
 
-        ecs_assert((64 * block_index) < bs->size, ECS_INTERNAL_ERROR, NULL);
-        ecs_flags64_t block = bs->data[block_index];
-
         if (not_fields & field_bit) {
             block = ~block;
         }
+
         mask &= block;
         has_bitset = true;
     }
@@ -205,7 +252,7 @@ compute_block:
         block_index = op_ctx->block_index = new_block_index;
 
         flecs_query_row_mask_t row_mask = flecs_query_get_row_mask(
-            it, table, block_index, and_fields, not_fields, op_ctx);
+            ctx, it, table, block_index, and_fields, not_fields, op_ctx);
 
         /* If table doesn't have bitset columns, all columns match */
         if (!(op_ctx->has_bitset = row_mask.has_bitset)) {
@@ -299,8 +346,8 @@ bool flecs_query_toggle(
         op_ctx->prev_set_fields = it->set_fields;
     }
 
-    ecs_flags64_t and_fields = op->first.entity & op_ctx->prev_set_fields;
-    ecs_flags64_t not_fields = op->second.entity & op_ctx->prev_set_fields;
+    ecs_flags64_t and_fields = op->first.entity;
+    ecs_flags64_t not_fields = op->second.entity;
 
     return flecs_query_toggle_cmp(
         op, redo, ctx, and_fields, not_fields);

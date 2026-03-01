@@ -2237,7 +2237,12 @@
                 "this_sort",
                 "this_table_move_2_from_3",
                 "toggle_0_src_only_term",
-                "toggle_0_src"
+                "toggle_0_src",
+                "or_toggle_first_branch_matches",
+                "or_toggle_second_branch_matches",
+                "or_toggle_third_branch_matches",
+                "or_toggle_all_branches_match_once",
+                "or_toggle_no_branches_match"
             ]
         }, {
             "id": "Sparse",
