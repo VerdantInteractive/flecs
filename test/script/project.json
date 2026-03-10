@@ -51,6 +51,7 @@
                 "line_comment_after_newline_before_3_newline_scope_open",
                 "line_comment_after_newline_before_mixed_comment_newline_scope_open",
                 "multi_line_comment_after_newline_before_mixed_comment_newline_scope_open",
+                "multi_line_comment_after_newline_before_mixed_comment_newline_scope_open_crlf",
                 "line_comment_after_newline_before_mixed_line_endings_scope_open",
                 "line_comment_after_newline_before_multiple_multi_line_comments_scope_open",
                 "multi_line_comment",
@@ -173,6 +174,7 @@
                 "oneof",
                 "brief_annotation",
                 "name_annotation",
+                "name_annotation_crlf",
                 "link_annotation",
                 "color_annotation",
                 "multiple_annotations",
@@ -263,6 +265,7 @@
                 "if_else_comment_mixed_comment_newline_if",
                 "if_else_comment_newline_scope_open",
                 "if_else_comment_mixed_comment_newline_scope_open",
+                "if_else_comment_mixed_comment_newline_scope_open_crlf",
                 "if_else_comment_no_space_scope_open",
                 "isa_in_module",
                 "isa_hierarchy",
@@ -446,6 +449,7 @@
                 "2_using_w_comment",
                 "using_wildcard_w_comment",
                 "module_stmt_w_comment",
+                "module_stmt_w_comment_crlf",
                 "template_stmt_w_comment",
                 "const_var_expr_w_comment",
                 "const_var_initializer_w_comment",
@@ -456,7 +460,8 @@
                 "scientific_notation_negative_exponent",
                 "scientific_notation_positive_exponent_sign",
                 "const_var_w_new_expr_two_tags",
-                "const_var_w_new_expr_tag_component"                
+                "const_var_w_new_expr_tag_component",
+                "empty_entity_kind"
             ]
         }, {
             "id": "Template",
@@ -959,6 +964,7 @@
                 "match_i32_empty_struct_cases",
                 "match_i32_struct_cases_unknown_type",
                 "match_i32_1_collection_case",
+                "match_i32_1_collection_case_crlf",
                 "match_i32_2_collection_cases",
                 "match_i32_3_collection_cases",
                 "match_i32_empty_collection_case",
@@ -1358,7 +1364,32 @@
                 "118",
                 "119",
                 "120",
-                "121"
+                "121",
+                "122",
+                "123",
+                "124",
+                "125",
+                "126",
+                "127",
+                "128",
+                "129",
+                "130",
+                "131",
+                "132",
+                "133",
+                "134",
+                "135",
+                "136",
+                "137",
+                "138",
+                "140",
+                "141",
+                "144",
+                "145",
+                "146",
+                "147",
+                "149",
+                "150"
             ]
         }]
     }

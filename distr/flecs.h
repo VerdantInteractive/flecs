@@ -929,12 +929,21 @@ typedef struct ecs_allocator_t ecs_allocator_t;
 #define ECS_ALIGNOF(T) static_cast<int64_t>(alignof(T))
 #elif defined(ECS_TARGET_MSVC)
 #define ECS_ALIGNOF(T) (int64_t)__alignof(T)
-#elif defined(ECS_TARGET_GNU)
-#define ECS_ALIGNOF(T) (int64_t)__alignof__(T)
-#elif defined(ECS_TARGET_CLANG)
-#define ECS_ALIGNOF(T) (int64_t)__alignof__(T)
 #else
-#define ECS_ALIGNOF(T) ((int64_t)&((struct { char c; T d; } *)0)->d)
+/* Use struct trick since on 32 bit platforms __alignof__ can return different
+ * results than C++'s alignof. This is illustrated when doing:
+ *
+ * __alignof__(uint64_t) == 8 on 32 bit platforms
+ * alignof(uint64_t) == 4 on 32 bit platforms
+ * 
+ * typedef struct {
+ *   uint64_t value;
+ * } Foo;
+ * 
+ * __alignof__(Foo) == 4 on 32 bit platforms
+ * alignof(Foo) == 4 on 32 bit platforms
+ */
+#define ECS_ALIGNOF(T) ((int64_t)(size_t)&((struct { char c; T d; } *)0)->d)
 #endif
 
 #ifndef FLECS_NO_ALWAYS_INLINE
@@ -3674,6 +3683,9 @@ struct ecs_observer_t {
 #define ECS_TYPE_HOOK_MOVE_DTOR_ILLEGAL      ECS_CAST(ecs_flags32_t, 1 << 18)
 #define ECS_TYPE_HOOK_CMP_ILLEGAL            ECS_CAST(ecs_flags32_t, 1 << 19)
 #define ECS_TYPE_HOOK_EQUALS_ILLEGAL         ECS_CAST(ecs_flags32_t, 1 << 20)
+
+/* Internal debug flag that indicates type hooks have been invoked */
+#define ECS_TYPE_HOOK_IN_USE                 ECS_CAST(ecs_flags32_t, 1 << 21)
 
 
 /* All valid hook flags */
@@ -13231,6 +13243,12 @@ typedef struct ecs_system_t {
     /** System query */
     ecs_query_t *query;
 
+    /** Query group to iterate */
+    uint64_t group_id;
+
+    /** True if a query group is configured */
+    bool group_id_set;
+
     /** Tick source associated with system */
     ecs_entity_t tick_source;
 
@@ -13286,6 +13304,21 @@ FLECS_API
 const ecs_system_t* ecs_system_get(
     const ecs_world_t *world,
     ecs_entity_t system);
+
+/** Set query group for system.
+ * This operation configures a system created with a grouped query to only
+ * iterate results for the specified group id. The group filter is applied to
+ * both manual runs and pipeline execution.
+ *
+ * @param world The world.
+ * @param system The system.
+ * @param group_id The query group id to iterate.
+ */
+FLECS_API
+void ecs_system_set_group(
+    ecs_world_t *world,
+    ecs_entity_t system,
+    uint64_t group_id);
 
 #ifndef FLECS_LEGACY
 
@@ -18478,8 +18511,11 @@ char* ecs_cpp_get_type_name(
 
 FLECS_API
 char* ecs_cpp_get_symbol_name(
+    /* If symbol_name is NULL, function allocates a buffer with ecs_os_malloc.
+     * Callers must free the returned pointer with ecs_os_free. */
     char *symbol_name,
     const char *type_name,
+    /* If len is 0, function derives it from type_name. */
     size_t len);
 
 FLECS_API
@@ -18494,20 +18530,28 @@ const char* ecs_cpp_trim_module(
     ecs_world_t *world,
     const char *type_name);
 
+typedef void (*ecs_cpp_type_action_t)(
+    ecs_world_t *world,
+    ecs_entity_t component);
+
+typedef struct ecs_cpp_component_desc_t {
+    ecs_entity_t id;
+    int32_t ids_index;
+    const char *name;
+    const char *cpp_name;
+    const char *cpp_symbol;
+    size_t size;
+    size_t alignment;
+    ecs_cpp_type_action_t lifecycle_action;
+    ecs_cpp_type_action_t enum_action;
+    bool is_component;
+    bool explicit_registration;
+} ecs_cpp_component_desc_t;
+
 FLECS_API
 ecs_entity_t ecs_cpp_component_register(
     ecs_world_t *world,
-    ecs_entity_t id,
-    int32_t ids_index,
-    const char *name,
-    const char *cpp_name,
-    const char *cpp_symbol,
-    size_t size,
-    size_t alignment,
-    bool is_component,
-    bool explicit_registration,
-    bool *registered_out,
-    bool *existing_out);
+    const ecs_cpp_component_desc_t *desc);
 
 FLECS_API
 void ecs_cpp_enum_init(
@@ -19392,13 +19436,41 @@ constexpr bool enum_constant_is_valid() {
         enum_type_len<E>() + 8 /* ', E C = ' */] != '(');
 }
 #else
+template <size_t N>
+constexpr size_t enum_template_arg_separator(
+    const char (&func_name)[N],
+    size_t pos,
+    size_t end,
+    size_t depth = 0)
+{
+    return pos >= end
+        ? end
+        : func_name[pos] == '<'
+            ? enum_template_arg_separator(func_name, pos + 1, end, depth + 1)
+            : func_name[pos] == '>'
+                ? enum_template_arg_separator(
+                    func_name, pos + 1, end, depth ? depth - 1 : 0)
+                : (func_name[pos] == ',' && !depth)
+                    ? pos
+                    : enum_template_arg_separator(
+                        func_name, pos + 1, end, depth);
+}
+
 /* Use different trick on MSVC, since it uses hexadecimal representation for
  * invalid enum constants. We can leverage that msvc inserts a C-style cast
- * into the name, and the location of its first character ('(') is known. */
+ * into the name. Find the template argument separator structurally instead of
+ * relying on the exact spelling of __FUNCSIG__ for the enum type. */
 template <typename E, E C>
 constexpr bool enum_constant_is_valid() {
-    return ECS_FUNC_NAME[ECS_FUNC_NAME_FRONT(bool, enum_constant_is_valid) +
-        enum_type_len<E>() + 1] != '(';
+    return enum_template_arg_separator(
+        ECS_FUNC_NAME,
+        ECS_FUNC_NAME_FRONT(bool, enum_constant_is_valid),
+        sizeof(ECS_FUNC_NAME) - ECS_FUNC_NAME_BACK - 1u) <
+            (sizeof(ECS_FUNC_NAME) - ECS_FUNC_NAME_BACK - 1u) &&
+        ECS_FUNC_NAME[enum_template_arg_separator(
+            ECS_FUNC_NAME,
+            ECS_FUNC_NAME_FRONT(bool, enum_constant_is_valid),
+            sizeof(ECS_FUNC_NAME) - ECS_FUNC_NAME_BACK - 1u) + 1u] != '(';
 }
 #endif
 
@@ -19862,6 +19934,8 @@ private:
  *
  * Code from: https://stackoverflow.com/questions/27024238/c-template-mechanism-to-get-the-number-of-function-arguments-which-would-work
  */
+
+#pragma once
 
 namespace flecs {
 namespace _ {
@@ -24231,6 +24305,12 @@ flecs::query_builder<Comps...> query_builder(Args &&... args) const;
 
 /** Iterate over all entities with components in argument list of function.
  * The function parameter must match the following signature:
+ *
+ * @code
+ * void(*)(flecs::entity)
+ * @endcode
+ *
+ * or:
  *
  * @code
  * void(*)(T&, U&, ...)
@@ -30008,44 +30088,39 @@ namespace flecs {
 
 namespace _ {
 
-// Translate a typename into a language-agnostic identifier. This allows for
-// registration of components/modules across language boundaries.
 template <typename T>
-inline const char* symbol_name() {
-    static const size_t len = ECS_FUNC_TYPE_LEN(const char*, symbol_name, ECS_FUNC_NAME);
-    static char result[len + 1] = {};
-    static const char* cppSymbolName = ecs_cpp_get_symbol_name(result, type_name<T>(), len);
-    return cppSymbolName;
+inline const char* component_symbol_name() {
+    return nullptr;
 }
 
-template <> inline const char* symbol_name<uint8_t>() {
+template <> inline const char* component_symbol_name<uint8_t>() {
     return "u8";
 }
-template <> inline const char* symbol_name<uint16_t>() {
+template <> inline const char* component_symbol_name<uint16_t>() {
     return "u16";
 }
-template <> inline const char* symbol_name<uint32_t>() {
+template <> inline const char* component_symbol_name<uint32_t>() {
     return "u32";
 }
-template <> inline const char* symbol_name<uint64_t>() {
+template <> inline const char* component_symbol_name<uint64_t>() {
     return "u64";
 }
-template <> inline const char* symbol_name<int8_t>() {
+template <> inline const char* component_symbol_name<int8_t>() {
     return "i8";
 }
-template <> inline const char* symbol_name<int16_t>() {
+template <> inline const char* component_symbol_name<int16_t>() {
     return "i16";
 }
-template <> inline const char* symbol_name<int32_t>() {
+template <> inline const char* component_symbol_name<int32_t>() {
     return "i32";
 }
-template <> inline const char* symbol_name<int64_t>() {
+template <> inline const char* component_symbol_name<int64_t>() {
     return "i64";
 }
-template <> inline const char* symbol_name<float>() {
+template <> inline const char* component_symbol_name<float>() {
     return "f32";
 }
-template <> inline const char* symbol_name<double>() {
+template <> inline const char* component_symbol_name<double>() {
     return "f64";
 }
 
@@ -30085,6 +30160,25 @@ void register_lifecycle_actions(
 }
 
 template <typename T>
+inline ecs_cpp_type_action_t lifecycle_action() {
+    if constexpr (std::is_trivial<T>::value) {
+        return nullptr;
+    } else {
+        return &register_lifecycle_actions<T>;
+    }
+}
+
+template <typename T>
+inline ecs_cpp_type_action_t enum_action() {
+#if FLECS_CPP_ENUM_REFLECTION_SUPPORT
+    if constexpr (is_enum_v<T>) {
+        return &_::init_enum<T>;
+    }
+#endif
+    return nullptr;
+}
+
+template <typename T>
 struct type_impl {
     static_assert(is_pointer<T>::value == false,
         "pointer types are not allowed for components");
@@ -30095,7 +30189,6 @@ struct type_impl {
     {
         index(); // Make sure global component index is initialized
 
-        s_allow_tag = allow_tag;
         s_size = sizeof(T);
         s_alignment = alignof(T);
         if (is_empty<T>::value && allow_tag) {
@@ -30125,30 +30218,23 @@ struct type_impl {
         init(allow_tag);
         ecs_assert(index() != 0, ECS_INTERNAL_ERROR, NULL);
 
-        bool registered = false, existing = false;
+        ecs_cpp_component_desc_t desc = {
+            id,
+            index(),
+            name,
+            type_name<T>(),
+            component_symbol_name<T>(),
+            size(),
+            alignment(),
+            lifecycle_action<T>(),
+            enum_action<T>(),
+            is_component,
+            explicit_registration
+        };
 
-        flecs::entity_t c = ecs_cpp_component_register(
-            world, id, index(), name, type_name<T>(), 
-            symbol_name<T>(), size(), alignment(),
-            is_component, explicit_registration, &registered, &existing);
+        flecs::entity_t c = ecs_cpp_component_register(world, &desc);
 
         ecs_assert(c != 0, ECS_INTERNAL_ERROR, NULL);
-
-        if (registered) {
-            // Register lifecycle callbacks, but only if the component has a
-            // size. Components that don't have a size are tags, and tags don't
-            // require construction/destruction/copy/move's.
-            if (size() && !existing) {
-                register_lifecycle_actions<T>(world, c);
-            }
-
-            // If component is enum type, register constants. Make sure to do 
-            // this after setting the component id, because the enum code will
-            // be calling type<T>::id().
-            #if FLECS_CPP_ENUM_REFLECTION_SUPPORT
-            _::init_enum<T>(world, c);
-            #endif
-        }
 
         return c;
     }
@@ -30203,7 +30289,6 @@ struct type_impl {
     static void reset() {
         s_size = 0;
         s_alignment = 0;
-        s_allow_tag = true;
     }
 
     static int32_t index() {
@@ -30213,13 +30298,11 @@ struct type_impl {
 
     static size_t s_size;
     static size_t s_alignment;
-    static bool s_allow_tag;
 };
 
 // Global templated variables that hold component identifier and other info
 template <typename T> inline size_t   type_impl<T>::s_size;
 template <typename T> inline size_t   type_impl<T>::s_alignment;
-template <typename T> inline bool     type_impl<T>::s_allow_tag( true );
 
 // Front facing class for implicitly registering a component & obtaining
 // static component data
@@ -31030,7 +31113,7 @@ struct table {
     /** Find type index for (component) id.
      *
      * @param id The (component) id.
-     * @return The index of the id in the table type, -1 if not found/
+     * @return The index of the id in the table type, -1 if not found.
      */
     int32_t type_index(flecs::id_t id) const {
         return ecs_table_get_type_index(world_, table_, id);
@@ -31039,7 +31122,7 @@ struct table {
     /** Find type index for type.
      *
      * @tparam T The type.
-     * @return True if the table has the type, false if not.
+     * @return The index of the id in the table type, -1 if not found.
      */
     template <typename T>
     int32_t type_index() const {
@@ -31049,7 +31132,7 @@ struct table {
     /** Find type index for pair.
      * @param first First element of pair.
      * @param second Second element of pair.
-     * @return True if the table has the pair, false if not.
+     * @return The index of the id in the table type, -1 if not found.
      */
     int32_t type_index(flecs::entity_t first, flecs::entity_t second) const {
         return type_index(ecs_pair(first, second));
@@ -31058,7 +31141,7 @@ struct table {
     /** Find type index for pair.
      * @tparam First First element of pair.
      * @param second Second element of pair.
-     * @return True if the table has the pair, false if not.
+     * @return The index of the id in the table type, -1 if not found.
      */
     template <typename First>
     int32_t type_index(flecs::entity_t second) const {
@@ -31068,7 +31151,7 @@ struct table {
     /** Find type index for pair.
      * @tparam First First element of pair.
      * @tparam Second Second element of pair.
-     * @return True if the table has the pair, false if not.
+     * @return The index of the id in the table type, -1 if not found.
      */
     template <typename First, typename Second>
     int32_t type_index() const {
@@ -31087,7 +31170,7 @@ struct table {
     /** Find column index for type.
      *
      * @tparam T The type.
-     * @return True if the table has the type, false if not.
+     * @return The column index of the id in the table type, -1 if not found.
      */
     template <typename T>
     int32_t column_index() const {
@@ -31097,7 +31180,7 @@ struct table {
     /** Find column index for pair.
      * @param first First element of pair.
      * @param second Second element of pair.
-     * @return True if the table has the pair, false if not.
+     * @return The column index of the id in the table type, -1 if not found.
      */
     int32_t column_index(flecs::entity_t first, flecs::entity_t second) const {
         return column_index(ecs_pair(first, second));
@@ -31106,7 +31189,7 @@ struct table {
     /** Find column index for pair.
      * @tparam First First element of pair.
      * @param second Second element of pair.
-     * @return True if the table has the pair, false if not.
+     * @return The column index of the id in the table type, -1 if not found.
      */
     template <typename First>
     int32_t column_index(flecs::entity_t second) const {
@@ -31116,7 +31199,7 @@ struct table {
     /** Find column index for pair.
      * @tparam First First element of pair.
      * @tparam Second Second element of pair.
-     * @return True if the table has the pair, false if not.
+     * @return The column index of the id in the table type, -1 if not found.
      */
     template <typename First, typename Second>
     int32_t column_index() const {
@@ -33547,6 +33630,18 @@ namespace _ {
 template<typename Func, typename ... Args>
 struct query_delegate_w_ent;
 
+template<typename Func, typename E>
+struct query_delegate_w_ent<Func, arg_list<E> >
+{
+    query_delegate_w_ent(const flecs::world& world, Func&& func) {
+        ecs_entities_t entities = ecs_get_entities(ecs_get_world(world));
+
+        for (int32_t i = 0; i < entities.alive_count; i ++) {
+            func(flecs::entity(world, entities.ids[i]));
+        }
+    }
+};
+
 template<typename Func, typename E, typename ... Args>
 struct query_delegate_w_ent<Func, arg_list<E, Args ...> >
 {
@@ -34047,7 +34142,7 @@ ecs_entity_t do_import(world& world, const char *symbol) {
 
 template <typename T>
 flecs::entity import(world& world) {
-    const char *symbol = _::symbol_name<T>();
+    char *symbol = ecs_cpp_get_symbol_name(NULL, type_name<T>(), 0);
 
     ecs_entity_t m = ecs_lookup_symbol(world, symbol, true, false);
 
@@ -34067,6 +34162,7 @@ flecs::entity import(world& world) {
         m = _::do_import<T>(world, symbol);
     }
 
+    ecs_os_free(symbol);
     return flecs::entity(world, m);
 }
 
@@ -34319,6 +34415,13 @@ struct system_builder final : _::system_builder_base<Components...> {
 
     template <typename Func>
     system each(Func&& func);
+
+private:
+    template <typename ... CallbackComponents, typename Func>
+    system each_callback(_::arg_list<CallbackComponents...>, Func&& func);
+
+    template <typename ... CallbackComponents>
+    void prepend_each_callback_signature();
 };
 
 }
@@ -34405,6 +34508,17 @@ struct system final : entity
 
     flecs::query<> query() const {
         return flecs::query<>(ecs_system_get(world_, id_)->query);
+    }
+
+    system& set_group(uint64_t group_id) {
+        ecs_system_set_group(world_, id_, group_id);
+        return *this;
+    }
+
+    template <typename Group>
+    system& set_group() {
+        ecs_system_set_group(world_, id_, _::type<Group>().id(world_));
+        return *this;
     }
 
     system_runner_fluent run(ecs_ftime_t delta_time = 0.0f, void *param = nullptr) const {
@@ -34498,6 +34612,31 @@ inline system_builder<Comps...> world::system(Args &&... args) const {
 
 namespace _ {
 
+template <typename ArgList>
+struct system_each_normalize_args;
+
+template <typename ... Args>
+struct system_each_normalize_args<arg_list<Args...>> {
+    using type = arg_list<remove_reference_t<Args>...>;
+};
+
+template <typename ArgList, typename = int>
+struct system_each_callback_args {
+    using type = typename system_each_normalize_args<ArgList>::type;
+};
+
+template <typename First, typename ... Args>
+struct system_each_callback_args<arg_list<First, Args...>,
+    if_t<is_same<decay_t<First>, flecs::entity>::value>> {
+    using type = typename system_each_normalize_args<arg_list<Args...>>::type;
+};
+
+template <typename First, typename Second, typename ... Args>
+struct system_each_callback_args<arg_list<First, Second, Args...>,
+    if_t<is_same<decay_t<First>, flecs::iter>::value>> {
+    using type = typename system_each_normalize_args<arg_list<Args...>>::type;
+};
+
 inline void system_init(flecs::world& world) {
     world.component<TickSource>("flecs::system::TickSource");
 }
@@ -34507,8 +34646,60 @@ inline void system_init(flecs::world& world) {
 template <typename ... Components>
 template <typename Func>
 inline system system_builder<Components...>::each(Func&& func) {
-    // Faster version of each() that iterates the query on the C++ side.
-    return this->run_each(FLECS_FWD(func));
+    if constexpr (sizeof...(Components) == 0) {
+        using CallbackComponents =
+            typename _::system_each_callback_args<arg_list_t<Func>>::type;
+        return this->each_callback(CallbackComponents{}, FLECS_FWD(func));
+    } else {
+        // Faster version of each() that iterates the query on the C++ side.
+        return this->run_each(FLECS_FWD(func));
+    }
+}
+
+template <typename ... Components>
+template <typename ... CallbackComponents, typename Func>
+inline system system_builder<Components...>::each_callback(
+    _::arg_list<CallbackComponents...>,
+    Func&& func)
+{
+    this->template prepend_each_callback_signature<CallbackComponents...>();
+
+    using Delegate = typename _::each_delegate<
+        typename std::decay<Func>::type, CallbackComponents...>;
+
+    auto ctx = FLECS_NEW(Delegate)(FLECS_FWD(func));
+    this->desc_.run = Delegate::run_each;
+    this->desc_.run_ctx = ctx;
+    this->desc_.run_ctx_free = _::free_obj<Delegate>;
+    return system(this->world_, &this->desc_);
+}
+
+template <typename ... Components>
+template <typename ... CallbackComponents>
+inline void system_builder<Components...>::prepend_each_callback_signature() {
+    if constexpr (sizeof...(Components) == 0 && sizeof...(CallbackComponents) != 0) {
+        constexpr int32_t callback_term_count =
+            static_cast<int32_t>(sizeof...(CallbackComponents));
+
+        ecs_assert(this->term_index_ + callback_term_count <= FLECS_TERM_COUNT_MAX,
+            ECS_INVALID_PARAMETER, "maximum number of terms exceeded");
+
+        const int32_t existing_term_count = this->term_index_;
+        this->set_term(nullptr);
+
+        for (int32_t i = existing_term_count - 1; i >= 0; i --) {
+            this->desc_.query.terms[i + callback_term_count] =
+                this->desc_.query.terms[i];
+        }
+
+        for (int32_t i = 0; i < callback_term_count; i ++) {
+            this->desc_.query.terms[i] = ecs_term_t{};
+        }
+
+        this->term_index_ = 0;
+        _::sig<CallbackComponents...>(this->world_).populate(this);
+        this->term_index_ = existing_term_count + callback_term_count;
+    }
 }
 
 } // namespace flecs

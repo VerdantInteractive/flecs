@@ -484,7 +484,10 @@
                 "eq_this_not_a_var_w_wildcard",
                 "singleton_trait",
                 "singleton_trait_w_explicit_this_var",
-                "singleton_trait_w_explicit_src"
+                "singleton_trait_w_explicit_src",
+                "lookup_component_by_symbol_1",
+                "lookup_component_by_symbol_2",
+                "lookup_component_by_symbol_3"
             ]
         }, {
             "id": "Fuzzing",
@@ -1819,16 +1822,6 @@
                 "this_self_up_childof_pair_new_tables",
                 "up_w_delete_table_and_move_parent",
                 "cascade_default_group_reinsert_after_empty_table_delete",
-                "it_ptrs",
-                "it_ptrs_after_column_resize",
-                "it_ptrs_after_column_merge",
-                "it_ptrs_after_column_shrink",
-                "it_ptrs_w_wildcard",
-                "it_ptrs_w_up",
-                "it_ptrs_w_up_childof",
-                "test_it_ptrs",
-                "test_it_ptrs_w_wildcard",
-                "test_it_ptrs_w_up",
                 "match_count_after_rematch",
                 "no_rematch_after_parent_delete",
                 "no_rematch_after_parent_create",
@@ -2349,6 +2342,7 @@
                 "1_var_sparse_pair_exclusive_wildcard_not",
                 "1_var_sparse_pair_any_not",
                 "1_var_sparse_pair_exclusive_any_not",
+                "2_this_sparse_with_component_and_not",
                 "1_sparse_component_unused",
                 "1_sparse_tag_unused",
                 "1_sparse_pair_wildcard_unused",
